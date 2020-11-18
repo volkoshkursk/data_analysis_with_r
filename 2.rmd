@@ -1,0 +1,235 @@
+---
+title: "Первичный анализ данных и О виде распределений и о сравнении распределений"
+output:
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+## 1. Выбор данных
+В качестве данных возьмём один из стандартных наборов для языка R, который описывает характеристики и оценки курсов и характеристики преподавателей Техасского университета.
+
+## 2. Считывание и просмотр
+Загрузим данные из файла и выведем первые 6 строк.
+
+```{r}
+data <- read.csv("TeachingRatings.csv");
+head(data)
+```
+## 3. Описание данных
+В этом наборе данных есть 13 переменных:
+
+1. X --- идентификатор курса;
+1. minority --- принадлежит ли преподаватель к меньшинству;
+2. age --- возраст преподавателя;
+3. gender --- пол преподавателя;
+4. credits --- является ли предмет факультативным;
+5. beauty --- оценка физического облика преподавателя группой из шести студентов, усредненная по шести участникам оценки, нормированная;
+6. eval --- оценка преподавания курса от 1 (очень плохо) до 5 (отлично);
+7. division --- является ли этот курс курсом высшего или низшего отделения (Курсы низшего отделения --- это в основном большие курсы первокурсников и второкурсников);
+8. native --- является ли преподаватель носителем английского языка;
+9. tenure --- имеет ли преподаватель учёную степень;
+10. students --- количетсво студентов, участвовавших в оценке;
+11. allstudents --- общее количетсво студентов, обучавшихся на этом курсе;
+12. prof --- идентификатор преподавателя;
+
+## 4. Типы признаков
+
+1. X --- качественный;
+1. minority --- качественный;
+2. age --- количественный;
+3. gender --- качественный;
+4. credits --- качественный;
+5. beauty --- порядковый;
+6. eval --- порядковый;
+7. division --- качественный;
+8. native --- качественный;
+9. tenure --- качественный;
+10. students --- количественный;
+11. allstudents --- количественный;
+12. prof --- качественный;
+
+Рассчитаем моду для признака "students":
+```{r}
+# Create the function.
+getmode <- function(v) {
+   uniqv <- unique(v)
+   uniqv[which.max(tabulate(match(v, uniqv)))]
+}
+getmode(data$students)
+```
+
+И посчитаем частоту моды:
+
+```{r}
+length(data$students[data$students==12])
+```
+
+Проведём аналогичные рассчёты для признака "allstudents".
+
+Мода:
+```{r}
+getmode(data$allstudents)
+```
+И частота:
+```{r}
+length(data$students[data$students==12])
+```
+Проведём аналогичные рассчёты для признака "age".
+
+Мода:
+```{r}
+getmode(data$age)
+```
+И частота:
+```{r}
+length(data$students[data$age==52])
+```
+Так как у признаков "allstudents" и "students" мода достигается 21 раз, а у признака "age" --- 47, признаки являются дискретными.
+
+## 5. Порядковые признаки
+В этом датасете нет текстовых меток порядкового признака.
+
+## 6. Matrix plot, outliers, etc.
+```{r}
+pairs(~age+beauty+students+eval+allstudents,data=data)
+```
+## 7. Симметричность распределений.
+Сильно несимметричных (с хвостом вправо) распределений здесь нет.
+
+## 8. Аутлаеры
+По графикам видно, что, во-первых, allstudents и students имеют линейную зависимость (причём без outliers).
+Во вторых видно, что age и beauty имеют линейную зависимость, но менее явную.
+
+## 9. Неоднородности.
+По графикам видно, что где есть признак allstudents с другими признаками даёт сильную неоднородность.
+
+Выведем те записи, которые им соответсвуют и попытаемся понять причину
+```{r}
+data[data$allstudents>320, ]
+```
+В выборке есть очень популярный преподаватель
+```{r}
+data[data$prof==73, ]
+```
+
+Уберём эти записи из выборки и посмотрим на скаттерплот
+
+```{r}
+filteredData = data[data$prof!=73, ]
+pairs(~age+beauty+students+eval+allstudents,data=filteredData)
+```
+
+```{r}
+#filteredData = data[data$prof!=73, ]
+filteredData_s = data
+filteredData_s['log'] = log(data$allstudents)
+filteredData_s['log2'] = log(data$students)
+pairs(~age+beauty+log2+eval+log,data=filteredData_s)
+```
+По графикам видно, что корреляция между количеством студентов, принявших участие в опросе и количеством студентов, прошедших обучение по курсу положительна и близка к единице.
+
+Может большое количество студентов зависит от отделения?
+```{r}
+pairs(~age+beauty+students+eval+allstudents,data=filteredData_s[filteredData$division=="lower", ])
+```
+```{r}
+pairs(~age+beauty+students+eval+allstudents,data=filteredData[filteredData$division=="upper", ])
+```
+
+Зависимость есть, но не особо сильная. А от учёной степени?
+
+```{r}
+pairs(~age+beauty+students+eval+allstudents,data=filteredData[filteredData$tenure=="no", ])
+```
+
+```{r}
+pairs(~age+beauty+students+eval+allstudents,data=filteredData[filteredData$tenure=="yes", ])
+```
+
+```{r}
+pairs(~age+beauty+students+eval+allstudents,data=filteredData[filteredData[filteredData$division=="lower", ]$tenure=="no", ])
+```
+
+```{r}
+filteredData[filteredData$allstudents>200, ]
+```
+
+
+## 11. Descriptive statistics
+```{r}
+summary(data)
+library(moments)
+library(dplyr)
+df = data.frame(age=data$age, beauty=data$beauty, eval=data$eval)
+summarize(df, across(age:beauty, list(kurtosis = kurtosis, skewness = skewness)))
+```
+
+## 2.1 Выбор категоризующей переменной
+
+В качестве категоризующего признака возьмем minority
+
+## 2.2 Boxplot
+```{r}
+data['allstudents_log'] = log(data$allstudents)
+data['students_log'] = log(data$students)
+dfcomp <- data %>% filter( minority == "no" | minority == "yes")
+
+library(lattice)
+bwplot(students_log ~ minority, data = dfcomp, col = c("forestgreen", "gold"), main = "students_log", xlab = "minority")
+
+bwplot(allstudents_log ~ minority, data = dfcomp, col = c("forestgreen", "gold"), main = "allstudents_log", xlab = "minority")
+
+bwplot(eval ~ minority, data = dfcomp, col = c("forestgreen", "gold"), main = "eval", xlab = "minority")
+
+bwplot(beauty ~ minority, data = dfcomp, col = c("forestgreen", "gold"), main = "beauty", xlab = "minority")
+
+bwplot(age ~ minority, data = dfcomp, col = c("forestgreen", "gold"), main = "age", xlab = "minority")
+```
+
+На всех выше приведённых boxplot видим, что распределения не симметричные, их медианы не совпадают, а дисперсии сильно отлличаются друг от друга.
+
+## 2.3 Нормальность признаков
+
+```{r}
+library(tidyr)
+qqmath(~value | name, data = pivot_longer(dfcomp, c(students_log,allstudents_log)), subset = minority == "yes")
+qqmath(~value | name, data = pivot_longer(dfcomp, c(students_log,allstudents_log)), groups = minority, auto.key = TRUE,
+       prepanel = prepanel.qqmathline,
+       panel = function(x, ...) {
+          panel.qqmathline(x, ...)
+          panel.qqmath(x, ...)
+       })
+
+shapiro.test(subset(dfcomp, minority == "yes")$allstudents_log)  #Критерий шапиро-уилка позволяет проверить гипотезу о том, что случайная величина имеет нормальное распределение.
+
+
+
+qqmath(~value | name, data = pivot_longer(dfcomp, c(students_log,allstudents_log)), subset = minority == "no")
+
+shapiro.test(subset(dfcomp, minority == "no")$allstudents_log)  #Критерий шапиро-уилка позволяет проверить гипотезу о том, что случайная величина имеет нормальное распределение.
+```
+Критерий показал, что предположение о нормальности выбранных нами признаков отвергнуто.
+
+
+## 2.4 t-test, критерий Манна-Уитни
+
+```{r}
+t.test(allstudents_log ~ minority, data = dfcomp) #Т-тест критерий позволяет проверить гипотезу о равенстве средних по одному признаку.
+
+wilcox.test(allstudents_log ~ minority, data = dfcomp) #непараметрический аналог, работает аналогичным образом.
+```
+Здесь видим, что $p-value<0.05$, вследствии чего гипотеза о равенстве средних отвергается. Критерий Вилкоксона менее точный, зато более устойчивый.
+
+## 2.5 Критерий Колмогорова-Смирнова
+```{r}
+dfcomp2 = subset(dfcomp, select = -c(X, gender, credits, division, native, tenure, prof) )
+ks.test(dfcomp2[dfcomp$minority == "yes",6], dfcomp2[dfcomp$minority == "no", 6]) #Критерий Колмогорова-Смирнова для проверки гипотезы о равенстве функций распределения двух случайных величин.
+```
+Здесь видим, что $p-value<0.05$, вследствии чего гипотеза о равенстве функций распределений отвергается.
+
+

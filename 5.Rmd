@@ -1,0 +1,83 @@
+---
+title: 'Анализ главных компонент'
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+```{r}
+library("devtools")
+install_github("kassambara/factoextra")
+library("factoextra")
+library("FactoMineR")
+```
+
+```{r}
+df <- read.csv("TeachingRatings.csv");
+head(df)
+```
+## 3. Описание данных
+В этом наборе данных есть 13 переменных:
+
+1. X --- идентификатор курса;
+1. minority --- принадлежит ли преподаватель к меньшинству;
+2. age --- возраст преподавателя;
+3. gender --- пол преподавателя;
+4. credits --- является ли предмет факультативным;
+5. beauty --- оценка физического облика преподавателя группой из шести студентов, усредненная по шести участникам оценки, нормированная;
+6. eval --- оценка преподавания курса от 1 (очень плохо) до 5 (отлично);
+7. division --- является ли этот курс курсом высшего или низшего отделения (Курсы низшего отделения --- это в основном большие курсы первокурсников и второкурсников);
+8. native --- является ли преподаватель носителем английского языка;
+9. tenure --- имеет ли преподаватель учёную степень;
+10. students --- количетсво студентов, участвовавших в оценке;
+11. allstudents --- общее количетсво студентов, обучавшихся на этом курсе;
+12. prof --- идентификатор преподавателя;
+
+```{r cars}
+library("knitr")
+library(dplyr)
+
+filteredData <- transform(df, allstudents=log(allstudents))
+filteredData <- select(filteredData, c(age, beauty, eval, students, allstudents))
+filteredData_s <- scale(filteredData, center = TRUE, scale = FALSE)
+
+```
+
+
+```{r pressure, echo=FALSE}
+pca <- PCA(filteredData_s, graph = FALSE)
+eigenvalues <- pca$eig
+eigenvalues
+barplot(eigenvalues[, 2], names.arg=1:nrow(eigenvalues), 
+       main = "Variances",
+       xlab = "Principal Components",
+       ylab = "Percentage of variances",
+       col ="steelblue")
+lines(x = 1:nrow(eigenvalues), eigenvalues[, 2], 
+      type="b", pch=19, col = "red")
+
+```
+Есть смысл пытаться интерпретировать все 5 компонент
+Построим собственные векторы корреляционной матрицы
+```{r}
+E <- eigen(cov(filteredData_s))
+E$vectors
+```
+```{r}
+plot(pca, choix = "var")
+```
+
+Посмотрим на координаты старых признаков в новых:
+```{r}
+pca$var$coord
+```
+%TODO: Мы это текстом пишем или словами скажем?
+```{r}
+fviz_pca_biplot(pca,  geom = "text")
+```
+Преподаватели 389, 387, 73, 386 и 388 явно выделяются
+```{r}
+filter(data.frame(pca$ind$coord), Dim.1>5)
+```
+
